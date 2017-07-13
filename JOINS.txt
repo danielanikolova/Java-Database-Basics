@@ -1,0 +1,214 @@
+#1
+SELECT e.employee_id, e.job_title, e.address_id, a.address_text
+from employees as e
+inner join addresses as a
+on e.address_id = a.address_id
+order by e.address_id
+limit 5;
+
+#2
+select e.first_name, e.last_name, t.name, a.address_text
+from employees e
+	inner join addresses a
+	on e.address_id = a.address_id
+	inner join towns t
+	on a.town_id = t.town_id
+	order by e.first_name, e.last_name
+	limit 5;
+
+#3
+select e.employee_id, e.first_name, e.last_name, d.name
+from employees e
+inner join departments d
+on e.department_id = d.department_id
+where d.name = 'Sales'
+order by e.employee_id desc;
+
+#4
+select e.employee_id, e.first_name, e.salary, d.name
+from employees e
+inner join departments d
+on e.department_id = d.department_id
+where e.salary >15000
+order by d.department_id desc
+limit 5;
+
+
+#5
+select e.employee_id, e.first_name
+from employees as e
+where e.employee_id not in (
+		select distinct(ep.employee_id)
+		from employees_projects as ep)
+		order by e.employee_id desc
+		limit 3;
+		
+		
+#6
+select e.first_name, e.last_name, e.hire_date, d.name
+from employees e	
+inner join departments d	
+on e.department_id = d.department_id
+where (date(e.hire_date) > '1999-01-01'
+			and d.name in ('Sales', 'Finance'))
+			order by e.hire_date;
+
+#7
+	
+select e.employee_id, e.first_name, p.name
+from employees e
+		inner join 	employees_projects ep
+		on e.employee_id = ep.employee_id
+			inner join projects p
+			on ep.project_id = p.project_id
+where (date(p.start_date) > '2002-08-13'
+and date(p.end_date) is null)
+order by e.first_name, p.name
+limit 5;
+
+#8
+select e.employee_id, e.first_name, 
+case 
+	when year(p.start_date) >= 2005 then NULL
+	else p.name
+	end as project_name 
+from employees e
+inner join employees_projects ep
+on e.employee_id = ep.employee_id 
+inner join projects p on ep.project_id = p.project_id
+where e.employee_id = 24
+order by p.name;
+
+
+#9
+select e.employee_id, e.first_name, e.manager_id, m.first_name as manager_name
+from employees e
+inner join employees m
+on e.manager_id = m.employee_id
+where m.employee_id in(3,7)
+order by e.first_name;
+
+#10
+select 
+		e.employee_id, 
+		concat (e.first_name , ' ', e.last_name) as employee_name, 
+		concat (m.first_name, ' ', m.last_name) as manager_name, 
+		d.name as department_name
+from employees e
+inner join employees m on e.manager_id = m.employee_id
+inner join departments d on e.department_id = d.department_id
+order by e.employee_id
+limit 5;
+
+#11
+select min(avg_salary) as min_average_salary from
+		(select avg (salary) as avg_salary, e.department_id as departmen_id
+		from employees e
+		group by e.department_id) as avg_salaries
+inner join departments on avg_salaries.departmen_id = departments.department_id;
+
+#12
+select c.country_code, m.mountain_range,p.peak_name, p.elevation
+from countries as c
+	inner join mountains_countries as mc
+	on c.country_code = mc.country_code
+		inner join mountains m on m.id = mc.mountain_id
+			inner join peaks as p on p.mountain_id = m.id
+where c.country_name = 'Bulgaia' and p.elevation >2835
+order by p.elevation desc;
+
+#13
+
+SELECT c.country_code, COUNT(mc.mountain_id) AS mountain_range
+  FROM countries AS c
+  LEFT JOIN mountains_countries AS mc
+    ON c.country_code = mc.country_code
+   AND c.country_name IN ('United States', 'Russia', 'Bulgaria')
+ GROUP BY c.country_code
+HAVING mountain_range > 0
+ ORDER BY mountain_range DESC, c.country_code;
+	
+#14
+
+select c.country_name, r.river_name
+from countries c
+inner join continents con on c.continent_code = con.continent_code
+left outer join countries_rivers cr on cr.country_code = c.country_code
+left outer join rivers r on r.id = cr.river_id
+where con.continent_name = 'Africa'
+order by c.country_name
+limit 5;
+
+#15
+
+SELECT currencies1.continent_code, currencies1.currency_code, currencies1.currency_usage
+  FROM (SELECT c.continent_code, ctr.currency_code, COUNT(ctr.currency_code) AS currency_usage
+          FROM continents AS c
+          LEFT JOIN countries AS ctr
+            ON c.continent_code = ctr.continent_code
+         GROUP BY c.continent_code, ctr.currency_code) AS currencies1
+ INNER JOIN (SELECT currencies.continent_code, MAX(currencies.currency_usage) AS max_currency_usage
+               FROM (SELECT c.continent_code, ctr.currency_code, COUNT(ctr.currency_code) AS currency_usage
+                       FROM continents AS c
+                       LEFT JOIN countries AS ctr
+                         ON c.continent_code = ctr.continent_code
+                      GROUP BY c.continent_code, ctr.currency_code) AS currencies
+              GROUP BY currencies.continent_code) AS currencies2
+    ON currencies1.continent_code = currencies2.continent_code
+   AND currencies1.currency_usage = currencies2.max_currency_usage
+   AND currencies2.max_currency_usage > 1
+ ORDER BY currencies1.continent_code, currencies1.currency_code;
+
+
+select table_one.continent_code, table_one.currency_code, table_one.currency_usage from
+		(select currency_usage.con_code as continent_code,
+		currency_usage.currency_code as currency_code,
+		max(currency_usage.currency_usage) as currency_usage 
+					from
+							 (select co.continent_code as con_code, 
+							 count(co.country_name) as currency_usage, 
+							 co.currency_code as currency_code
+							 from countries as co
+							 group by con_code, co.currency_code
+							 having currency_usage >1) as currency_usage
+					where currency_code is not null			
+					group by continent_code, currency_code) as table_one
+inner join (select co.continent_code as con_code, 
+							 count(co.country_name) as currency_usage, 
+							 co.currency_code as currency_code
+							 from countries as co
+							 group by co.continent_code, co.currency_code) as table_two
+
+
+#16
+select count(*) as country_count 
+from 
+		(select c.country_code, mc.mountain_id
+		from countries c
+		left outer join mountains_countries mc on c.country_code = mc.country_code
+		where mc.mountain_id is null) as country_without_mountains;
+		
+#17
+select me.country_name as country_name,
+ me.max_elevation as highest_peak_elevation,
+ rl.max_len as longest_river_length
+ 
+from
+			(select c.country_name as country_name, 
+			max(p.elevation) as max_elevation
+						from countries c
+						left outer join mountains_countries mc on c.country_code = mc.country_code
+						left outer join peaks p on mc.mountain_id = p.mountain_id
+						where p.elevation is not null
+						group by c.country_name) as me
+	inner join 			
+			(select c.country_name, max(r.length) as max_len
+				from countries c 
+				left outer join countries_rivers cr on cr.country_code = c.country_code
+				left outer join rivers r on cr.river_id = r.id
+				where r.length is not null
+				group by c.country_name) as rl
+	on me.country_name = rl.country_name
+	order by highest_peak_elevation desc, longest_river_length desc, country_name
+	limit 5;
+	
